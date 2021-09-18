@@ -45,7 +45,7 @@ class Decoder(nn.Module):
 	n_hid:           int = attr.ib(default=256,  validator=lambda i, a, x: x >= 64)
 	n_blk_per_group: int = attr.ib(default=2,    validator=lambda i, a, x: x >= 1)
 	output_channels: int = attr.ib(default=3,    validator=lambda i, a, x: x >= 1)
-	vocab_size:      int = attr.ib(default=256, validator=lambda i, a, x: x >= 256)
+	vocab_size:      int = attr.ib(default=256, validator=lambda i, a, x: x >= 32)
 
 	device:              torch.device = attr.ib(default=torch.device('cpu'))
 	requires_grad:       bool         = attr.ib(default=False)

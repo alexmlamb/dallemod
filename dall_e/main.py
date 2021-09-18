@@ -13,12 +13,12 @@ from encoder import Encoder
 from decoder import Decoder
 from quantize import Quantize
 
-enc = Encoder().cuda()
-dec = Decoder().cuda()
+enc = Encoder(vocab_size=256).cuda()
+dec = Decoder(vocab_size=256).cuda()
 
 bs = 256
-L = 4096
-n_factors = 16
+L = 1024
+n_factors = 4
 
 assert bs*n_factors >= L
 
@@ -26,10 +26,13 @@ quant = Quantize(4*4*256, L, n_factors).cuda() # 1 factor
 
 opt = torch.optim.Adam(list(enc.parameters()) + list(dec.parameters()) + list(quant.parameters()))
 
+hw = 32
+
 train_loader = torch.utils.data.DataLoader(datasets.CIFAR10('data',
                                                           download=True,
                                                           train=True,
                                                           transform=transforms.Compose([
+                                                              transforms.Resize((hw,hw)),
                                                               transforms.ToTensor(), # first, convert image to PyTorch tensor
                                                           ])),
                                            batch_size=bs,
@@ -45,6 +48,7 @@ for epoch in range(0,50):
 
         x = x.cuda()
 
+
         h = enc(x)
 
         bs, e_dim, e_width, _ = h.shape
@@ -53,7 +57,7 @@ for epoch in range(0,50):
 
         #can quantize here
 
-        if epoch >= 1:
+        if epoch >= 3:
             h, q_loss, ind = quant(h)
         else:
             q_loss = 0.0
