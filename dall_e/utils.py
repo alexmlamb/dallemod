@@ -13,7 +13,7 @@ class Conv2d(nn.Module):
 	n_out: int = attr.ib(validator=lambda i, a, x: x >= 1)
 	kw:    int = attr.ib(validator=lambda i, a, x: x >= 1 and x % 2 == 1)
 
-	use_float16:   bool         = attr.ib(default=True)
+	use_float16:   bool         = attr.ib(default=False)
 	device:        torch.device = attr.ib(default=torch.device('cpu'))
 	requires_grad: bool         = attr.ib(default=False)
 

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from collections  import OrderedDict
 from functools    import partial
-from dall_e.utils import Conv2d
+from utils import Conv2d
 
 @attr.s(eq=False, repr=False)
 class DecoderBlock(nn.Module):
@@ -45,7 +45,7 @@ class Decoder(nn.Module):
 	n_hid:           int = attr.ib(default=256,  validator=lambda i, a, x: x >= 64)
 	n_blk_per_group: int = attr.ib(default=2,    validator=lambda i, a, x: x >= 1)
 	output_channels: int = attr.ib(default=3,    validator=lambda i, a, x: x >= 1)
-	vocab_size:      int = attr.ib(default=8192, validator=lambda i, a, x: x >= 512)
+	vocab_size:      int = attr.ib(default=256, validator=lambda i, a, x: x >= 256)
 
 	device:              torch.device = attr.ib(default=torch.device('cpu'))
 	requires_grad:       bool         = attr.ib(default=False)
