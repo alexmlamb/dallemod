@@ -17,10 +17,10 @@ enc = Encoder().cuda()
 dec = Decoder().cuda()
 
 bs = 256
-L = 256
-n_factors = 1
+L = 4096
+n_factors = 16
 
-assert bs >= L*n_factors
+assert bs*n_factors >= L
 
 quant = Quantize(4*4*256, L, n_factors).cuda() # 1 factor
 
