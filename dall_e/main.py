@@ -11,11 +11,20 @@ from torchvision.utils import save_image
 
 from encoder import Encoder
 from decoder import Decoder
+from quantize import Quantize
 
 enc = Encoder().cuda()
 dec = Decoder().cuda()
 
-opt = torch.optim.Adam(list(enc.parameters()) + list(dec.parameters()))
+bs = 256
+L = 256
+n_factors = 1
+
+assert bs >= L*n_factors
+
+quant = Quantize(4*4*256, L, n_factors).cuda() # 1 factor
+
+opt = torch.optim.Adam(list(enc.parameters()) + list(dec.parameters()) + list(quant.parameters()))
 
 train_loader = torch.utils.data.DataLoader(datasets.CIFAR10('data',
                                                           download=True,
@@ -23,9 +32,10 @@ train_loader = torch.utils.data.DataLoader(datasets.CIFAR10('data',
                                                           transform=transforms.Compose([
                                                               transforms.ToTensor(), # first, convert image to PyTorch tensor
                                                           ])),
-                                           batch_size=256,
+                                           batch_size=bs,
                                             drop_last=True,
                                            shuffle=True)
+
 
 for epoch in range(0,50):
 
@@ -39,9 +49,14 @@ for epoch in range(0,50):
 
         bs, e_dim, e_width, _ = h.shape
 
-        h = h.permute(0,2,3,1).reshape((bs, e_width*e_width, e_dim))
+        h = h.permute(0,2,3,1).reshape((bs, 1, e_width*e_width*e_dim))
 
         #can quantize here
+
+        if epoch >= 1:
+            h, q_loss, ind = quant(h)
+        else:
+            q_loss = 0.0
 
         h = h.reshape((bs, e_width, e_width, e_dim)).permute(0,3,1,2)
 
@@ -49,8 +64,10 @@ for epoch in range(0,50):
 
         loss = F.mse_loss(x, xr)
 
+        all_loss = loss + q_loss
+
         opt.zero_grad()
-        loss.backward()
+        all_loss.backward()
         opt.step()
 
         loss_lst.append(loss.data)
