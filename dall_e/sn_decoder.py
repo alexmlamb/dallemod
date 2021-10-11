@@ -9,6 +9,9 @@ from collections  import OrderedDict
 from functools    import partial
 from utils import Conv2d
 
+import torch.nn.utils.spectral_norm as sn
+#from spectral_norm import SpectralNorm as sn
+
 @attr.s(eq=False, repr=False)
 class DecoderBlock(nn.Module):
 	n_in:     int = attr.ib(validator=lambda i, a, x: x >= 1)
@@ -24,16 +27,16 @@ class DecoderBlock(nn.Module):
 		self.post_gain = 1 / (self.n_layers ** 2)
 
 		make_conv     = partial(Conv2d, device=self.device, requires_grad=self.requires_grad)
-		self.id_path  = make_conv(self.n_in, self.n_out, 1) if self.n_in != self.n_out else nn.Identity()
+		self.id_path  = sn(make_conv(self.n_in, self.n_out, 1),name='w') if self.n_in != self.n_out else nn.Identity()
 		self.res_path = nn.Sequential(OrderedDict([
 				('relu_1', nn.ReLU()),
-				('conv_1', make_conv(self.n_in,  self.n_hid, 1)),
+				('conv_1', sn(make_conv(self.n_in,  self.n_hid, 1),name='w')),
 				('relu_2', nn.ReLU()),
-				('conv_2', make_conv(self.n_hid, self.n_hid, 3)),
+				('conv_2', sn(make_conv(self.n_hid, self.n_hid, 3),name='w')),
 				('relu_3', nn.ReLU()),
-				('conv_3', make_conv(self.n_hid, self.n_hid, 3)),
+				('conv_3', sn(make_conv(self.n_hid, self.n_hid, 3),name='w')),
 				('relu_4', nn.ReLU()),
-				('conv_4', make_conv(self.n_hid, self.n_out, 3)),]))
+				('conv_4', sn(make_conv(self.n_hid, self.n_out, 3),name='w')),]))
 
 	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		return self.id_path(x) + self.post_gain * self.res_path(x)
