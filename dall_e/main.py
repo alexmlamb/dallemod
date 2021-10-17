@@ -69,13 +69,37 @@ if bottleneck == 'gaussian':
 
 opt = torch.optim.AdamW(params, lr=0.0005, weight_decay=1e-4, betas=(0.95,0.999))
 
-attack_params = {'eps' : 1.0, 'eps_iter': 0.01, 'iter':200} #0.5/0.01
+attack_params = {'eps' : 0.5, 'eps_iter': 0.01, 'iter':200} #0.5/0.01
 
 #scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, [70,90])
 
 hw = 32
 
-train_loader = torch.utils.data.DataLoader(datasets.MNIST('data',
+#train_loader = torch.utils.data.DataLoader(datasets.MNIST('data',
+#                                                          download=True,
+#                                                          train=True,
+#                                                          transform=transforms.Compose([
+#                                                              transforms.Resize((hw,hw)),
+#                                                              transforms.ToTensor(), # first, convert image to PyTorch tensor
+#                                                          ])),
+#                                           batch_size=bs,
+#                                            drop_last=True,
+#                                           shuffle=True)
+
+
+nll_loss = nn.CrossEntropyLoss()
+
+for epoch in range(0,100):
+
+    seed = 42
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
+
+    train_loader = torch.utils.data.DataLoader(datasets.MNIST('data',
                                                           download=True,
                                                           train=True,
                                                           transform=transforms.Compose([
@@ -86,10 +110,6 @@ train_loader = torch.utils.data.DataLoader(datasets.MNIST('data',
                                             drop_last=True,
                                            shuffle=True)
 
-
-nll_loss = nn.CrossEntropyLoss()
-
-for epoch in range(0,100):
 
     loss_lst = []
     k = 0
@@ -156,13 +176,14 @@ for epoch in range(0,100):
         #loss = lap_loss(lap_transform(x), xr[:,0:3], xr[:,3:6])
         #xr = lap_inv_transform(F.sigmoid(xr[:,0:3]))
 
+        adv_loss = (grad((xr**2).sum(), h, create_graph=True)[0]**2).mean()
+
         if use_sn and epoch > 10:
-            adv_loss = 0.0001 * (grad((xr**2).sum(), h, create_graph=True)[0]**2).mean()
+            adv_loss_use = 0.0001 * adv_loss
         else:
-            adv_loss = 0.0
+            adv_loss_use = 0.0
 
-        all_loss = loss + q_loss + c_loss + adv_loss
-
+        all_loss = loss + q_loss + c_loss + adv_loss_use
 
         opt.zero_grad()
         all_loss.backward()
@@ -188,6 +209,7 @@ for epoch in range(0,100):
             print('x min max', x.min(), x.max(), 'xadv min max', x_adv.min(), x_adv.max())
             print('xrec_adv clamped', ((x - x_adv.clamp(0.0,1.0))**2).mean())
             print('xrec_adv', ((x - x_adv)**2).mean())
+            print('adv_loss', adv_loss)
 
             save_image(x[:64], 'orig_%s_sn_%s.png' % (bottleneck, use_sn))
             save_image(xr[:64], 'rec_%s_sn_%s.png' % (bottleneck, use_sn))
